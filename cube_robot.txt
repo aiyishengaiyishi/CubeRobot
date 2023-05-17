@@ -1,0 +1,234 @@
+#include <Servo.h>
+
+class Stepper {
+ public:
+  Stepper(int dir, int step) {
+    dir_pin_ = dir;
+    step_pin_ = step;
+    
+    pinMode(dir_pin_, OUTPUT);
+    pinMode(step_pin_, OUTPUT);
+  }
+  rotateDirStep(bool dir, int step) {  // dir: 顺时针(true)/逆时针(false)
+    if (dir) {
+      digitalWrite(dir_pin_, LOW);
+    } else {
+      digitalWrite(dir_pin_, HIGH);
+    }
+    rotateStep(step);
+  }
+  rotateStep(int step) {
+    for (int i = 0; i < step * STEPS_PER_REV; ++i) {
+      digitalWrite(step_pin_,HIGH); 
+      delayMicroseconds(500);
+      digitalWrite(step_pin_,LOW); 
+      delayMicroseconds(500);
+    }
+  }
+  clockWiseRotate() {  // 顺时针 90°
+    rotateDirStep(true, 1);
+    delayTime();
+  }
+  invClockWiseRotate() {  // 逆时针 90°
+    rotateDirStep(false, 1);
+    delayTime();
+  }
+  halfInvClockWiseRotate() {  // 逆时针转动 180°
+    rotateDirStep(false, 2);
+    delayTime();
+  }
+  halfClockWiseRotate() {  // 顺时针 180°
+    rotateDirStep(true, 2);
+    delayTime();
+  }
+  rotateSign(char sign, char flag) {
+    if (sign == '1') {
+      clockWiseRotate();
+    } else if (sign == '2') {
+      if (flag) {
+        halfInvClockWiseRotate();
+      } else {
+        halfClockWiseRotate();
+      }
+    } else if (sign == '\'') {
+      invClockWiseRotate();
+    }
+  }
+  invRotateSign(char sign, char flag) {
+    if (sign == '1') {
+      invClockWiseRotate();
+    } else if (sign == '2') {
+      if (flag) {
+        halfClockWiseRotate();
+      } else {
+        halfInvClockWiseRotate();
+      }
+    } else if (sign == '\'') {
+      clockWiseRotate();
+    }
+  }
+ private:
+  int dir_pin_;
+  int step_pin_;
+  const static int STEPS_PER_REV = 1600;
+  delayTime() { delay(1000); }
+};
+
+class Engine {
+ public:
+  Engine(int pin, int closure, int open) {
+    pin_ = pin;
+    closure_ = closure;
+    open_ = open;
+  }
+  init() {
+    servo_.attach(pin_);
+    servo_.write(closure_);
+    delayTime();
+  }
+  closureEngine() {  // 闭合机械爪
+    servo_.write(closure_);
+    delayTime();
+  }
+  openEngine() {  // 张开机械爪
+    servo_.write(open_);
+    delayTime();
+  }
+ private:
+  int pin_;
+  int closure_;
+  int open_;
+  Servo servo_;
+  delayTime() { delay(1000); }
+};
+
+Stepper stepper_left(9, 11);
+Stepper stepper_right(8, 10);
+Engine engine_left(6, 150, 48);
+Engine engine_right(5, 165, 60);
+
+class CubeSolve {
+ public:
+  leftRotate(char sign) {
+    engine_left.closureEngine();
+    stepper_left.rotateSign(sign, true);
+    engine_left.openEngine();
+    stepper_left.invRotateSign(sign, true);
+    engine_left.closureEngine();
+  }
+  rightRotate(char sign) {
+    engine_right.closureEngine();
+    stepper_right.rotateSign(sign, false);
+    engine_right.openEngine();
+    stepper_right.invRotateSign(sign, false);
+    engine_right.closureEngine();
+  }
+  rightRotateCube(bool flag) {  // flag: 顺时针(true)/逆时针(false)
+    engine_left.openEngine();
+    if (flag) {
+      stepper_right.rotateSign('\'', false);
+    } else {
+      stepper_right.rotateSign('1', false);
+    }
+    engine_left.closureEngine();
+    
+    engine_right.openEngine();
+    if (flag) {
+      stepper_right.rotateSign('1', false);
+    } else {
+      stepper_right.rotateSign('\'', false);
+    }
+    engine_right.closureEngine();
+  }
+  leftRotateCube(bool flag) {  // flag: 顺时针(true)/逆时针(false)
+    engine_right.openEngine();
+    if (flag) {
+      stepper_left.rotateSign('1', true);
+    } else {
+      stepper_left.rotateSign('\'', true);
+    }
+    engine_right.closureEngine();
+
+    engine_left.openEngine();
+    if (flag) {
+      stepper_left.rotateSign('\'', false);
+    } else {
+      stepper_left.rotateSign('1', false);
+    }
+    engine_left.closureEngine();
+  }
+  rotateDown(char sign) {
+    leftRotate(sign);
+  }
+  rotateRight(char sign) {
+    rightRotate(sign);
+  }
+  rotateFront(char sign) {
+    rightRotateCube(true);
+    leftRotate(sign);
+    rightRotateCube(false);
+  }
+  rotateUp(char sign) {
+    rightRotateCube(true);
+    rightRotateCube(true);
+    leftRotate(sign);
+    rightRotateCube(false);
+    rightRotateCube(false);
+  }
+  rotateLeft(char sign) {
+    leftRotateCube(false);
+    leftRotateCube(false);
+    rightRotate(sign);
+    leftRotateCube(true);
+    leftRotateCube(true);
+  }
+  rotateBack(char sign) {
+    leftRotateCube(false);
+    rightRotate(sign);
+    leftRotateCube(true);
+  }
+  rotate(char side, char sign) {
+    if (side == 'D') {
+      rotateDown(sign);
+    } else if (side == 'R') {
+      rotateRight(sign);
+    } else if (side == 'F') {
+      rotateFront(sign);
+    } else if (side == 'U') {
+      rotateUp(sign);
+    } else if (side == 'L') {
+      rotateLeft(sign);
+    } else if (side == 'B') {
+      rotateBack(sign);
+    }
+  }
+};
+
+CubeSolve cube_solve;
+
+void setup() {
+  Serial.begin(9600);
+  engine_left.init();
+  engine_right.init();
+}
+
+void loop() {
+  String str = "";
+  while(Serial.available() > 0){
+    str += char(Serial.read());
+    delay(10);      // 延时函数用于等待字符完全进入缓冲区，可以尝试没有延时，输出结果会是什么
+  }
+  // 检查是否接收到数据，如果接收到数据，则输出该数据
+  if(str != ""){
+    int len = str.length() - 1;
+    for (int i = 0; i < len; i += 3) {
+      char side = str[i];
+      char sign = str[i + 1];
+      Serial.print(side);
+      Serial.println(sign);
+      cube_solve.rotate(side, sign);
+      delay(1000);
+    }
+  }
+}
+
