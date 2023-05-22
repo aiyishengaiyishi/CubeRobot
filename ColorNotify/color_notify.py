@@ -92,7 +92,7 @@ def colorNotify():
         # with open('../Kociemba/input.txt', 'a+') as f:
         #     print("", file=f)
 
-    with open('../Kociemba/input.txt', 'w') as f:
+    with open('../Kociemba/input.txt', 'a+') as f:
         for i in range(6):
             for j in range(9):
                 print(colors_list[i][j], end="", file=f)
